@@ -56,11 +56,14 @@ the edge opens the Shelf. The tray menu can pause hover reveal temporarily.
 
 Glide works on its own. Two small companion apps plug into it if you have them:
 
-- **[SharpShot Studio](https://github.com/Leonxlnx/SharpShot/tree/studio/develop/desktop)**, the
-  recommended capture tool (open source, MIT, part of the
-  [SharpShot](https://github.com/Leonxlnx/SharpShot) project). With it installed, the tools row has
+- **SharpShot**, the screenshot and screen-recording tool Glide is built around. It ships with this
+  repo in [`sharpshot/`](sharpshot) (a submodule of
+  [Leonxlnx/SharpShot](https://github.com/Leonxlnx/SharpShot), MIT). It comes in two flavours:
+  [SharpShot Studio](https://github.com/Leonxlnx/SharpShot/tree/main/desktop) (capture, library
+  and editor) and SharpShot Quick (a tiny native tray app). With Studio installed, the tools row has
   Screenshot, Record and Studio buttons (<kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> / <kbd>A</kbd> /
   <kbd>E</kbd>), and Captures follows its library live (`%APPDATA%\sharpshot-studio\library.json`).
+  See [Build SharpShot](#build-sharpshot) below.
 - **QuickTodo**, a tiny <kbd>Alt</kbd>+<kbd>Q</kbd> todo app. The Todo section mirrors its lists
   (`%APPDATA%\QuickTodo\todos.json`) both ways. QuickTodo only reads that file at startup, so to
   apply edits made in Glide, Glide asks it to save, applies the edits and restarts it hidden. It
@@ -81,12 +84,29 @@ You need:
 - Git
 
 ```powershell
-git clone https://github.com/Leonxlnx/glide.git
+git clone --recursive https://github.com/Leonxlnx/glide.git
 cd glide
 npm install
 npm run build      # renderer -> dist/
 npm start          # run from source
 ```
+
+Already cloned without `--recursive`? Run `git submodule update --init` to fetch `sharpshot/`.
+
+### Build SharpShot
+
+SharpShot lives in `sharpshot/` and builds on its own (Glide doesn't need it to run):
+
+```powershell
+cd sharpshot
+.\build.ps1                    # SharpShot Quick: native tray app, needs only .NET Framework 4.8
+cd desktop
+npm ci; npm run build          # SharpShot Studio: Electron app, Node.js 22.12+
+```
+
+Full instructions are in [`sharpshot/README.md`](https://github.com/Leonxlnx/SharpShot#readme) and
+[`sharpshot/desktop/README.md`](https://github.com/Leonxlnx/SharpShot/blob/main/desktop/README.md).
+Run either Studio or Quick, not both: they share the same global shortcuts.
 
 Glide registers global shortcuts and allows a single instance, so quit any installed copy first
 (tray icon → Quit Glide).
@@ -176,6 +196,7 @@ src/
   lib/            renderer helpers; bridge.js falls back to a mock so the UI also runs in a browser
 scripts/          install, uninstall, package, helper build, icons, clipboard export
 assets/           app and tray icons
+sharpshot/        SharpShot Quick + Studio, the capture tools (git submodule)
 ```
 
 ## Contributing

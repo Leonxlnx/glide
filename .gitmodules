@@ -1,0 +1,3 @@
+[submodule "sharpshot"]
+	path = sharpshot
+	url = https://github.com/Leonxlnx/SharpShot.git
