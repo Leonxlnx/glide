@@ -56,10 +56,11 @@ the edge opens the Shelf. The tray menu can pause hover reveal temporarily.
 
 Glide works on its own. Two small companion apps plug into it if you have them:
 
-- **[SharpShot Studio](https://github.com/Leonxlnx/sharpshot-studio)**, the recommended capture
-  tool. With it installed, the tools row has Screenshot, Record and Studio buttons
-  (<kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> / <kbd>A</kbd> / <kbd>E</kbd>), and Captures follows
-  its library live (`%APPDATA%\sharpshot-studio\library.json`).
+- **[SharpShot Studio](https://github.com/Leonxlnx/SharpShot/tree/studio/develop/desktop)**, the
+  recommended capture tool (open source, MIT, part of the
+  [SharpShot](https://github.com/Leonxlnx/SharpShot) project). With it installed, the tools row has
+  Screenshot, Record and Studio buttons (<kbd>Win</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> / <kbd>A</kbd> /
+  <kbd>E</kbd>), and Captures follows its library live (`%APPDATA%\sharpshot-studio\library.json`).
 - **QuickTodo**, a tiny <kbd>Alt</kbd>+<kbd>Q</kbd> todo app. The Todo section mirrors its lists
   (`%APPDATA%\QuickTodo\todos.json`) both ways. QuickTodo only reads that file at startup, so to
   apply edits made in Glide, Glide asks it to save, applies the edits and restarts it hidden. It
