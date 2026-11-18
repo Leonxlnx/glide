@@ -1,0 +1,44 @@
+{
+  "name": "glide",
+  "version": "1.0.0",
+  "description": "A fluid, glass sidebar for Windows: clipboard history, capture tools, a file shelf, todos and now playing.",
+  "productName": "Glide",
+  "author": "Leon Lin",
+  "license": "MIT",
+  "homepage": "https://github.com/Leonxlnx/glide#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Leonxlnx/glide.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Leonxlnx/glide/issues"
+  },
+  "private": true,
+  "main": "electron/main.js",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "build": "node node_modules/vite/bin/vite.js build --config vite.config.mjs",
+    "start": "electron .",
+    "dev": "npm run build && electron .",
+    "icons": "electron scripts/make-icons.js",
+    "package": "node scripts/package.js"
+  },
+  "dependencies": {
+    "koffi": "^3.3.2"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^44.7.0",
+    "lucide-react": "^1.53.0",
+    "motion": "^14.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^5.4.21"
+  }
+}
