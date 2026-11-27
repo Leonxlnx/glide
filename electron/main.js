@@ -189,11 +189,13 @@ function boot() {
   // ─────────────────────────── fullscreen ───────────────────────────
   // Each screen is checked on its own (native.fullscreenOn), so a game on one screen can leave
   // Glide alone on the other. Windows' own signal still counts: presentation mode pauses every
-  // screen, and so does a fullscreen app it reports that no screen check found.
+  // screen, and a fullscreen app it reports that no screen check found is put on the primary
+  // screen, the only one that signal covers.
   function scanFullscreen() {
     const st = native.notificationState(); // 2 BUSY, 3 D3D_FULL_SCREEN, 4 PRESENTATION_MODE
     fsDisplays = new Set(displays.filter((d) => native.fullscreenOn(screen.dipToScreenRect(null, d.bounds))).map((d) => d.id));
-    fsAll = st === 4 || ((st === 2 || st === 3) && !fsDisplays.size);
+    if ((st === 2 || st === 3) && !fsDisplays.size) fsDisplays.add(screen.getPrimaryDisplay().id);
+    fsAll = st === 4;
   }
 
   /** Whether "Pause in fullscreen apps" keeps Glide off this screen right now. */
