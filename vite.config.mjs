@@ -44,6 +44,7 @@ export default defineConfig({
       input: {
         sidebar: resolve(root, 'src/sidebar.html'),
         handle: resolve(root, 'src/handle.html'),
+        editor: resolve(root, 'src/editor.html'),
       },
     },
   },

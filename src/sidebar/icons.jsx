@@ -7,7 +7,7 @@ import {
   BatteryCharging, ImageBroken, Aperture, Scan, Crop, Camera, Record, VideoCamera, FilmSlate, FilmStrip, Monitor,
   Microphone, MagicWand, Robot, Brain, ChatCircle, TerminalWindow, Lightning, Star, MusicNote, Timer, Translate,
   Calculator, Command, RocketLaunch, Ghost, Fire, Heart, Coffee, GameController, Feather, Notebook, AppWindow,
-  CursorClick, Selection, PaintBrush, ListChecks, ArrowSquareOut, DownloadSimple,
+  CursorClick, Selection, PaintBrush, ListChecks, ArrowSquareOut, DownloadSimple, PencilSimple,
 } from '@phosphor-icons/react';
 
 const UI = {
@@ -18,6 +18,7 @@ const UI = {
   music: MusicNotesSimple, back: CaretLeft, chevRight: CaretRight, chevUp: CaretUp, chevDown: CaretDown, plus: Plus,
   power: Power, restart: ArrowClockwise, check: Check, grab: HandGrabbing, sparkle: Sparkle, imageBroken: ImageBroken,
   aperture: Aperture, video: VideoCamera, todo: ListChecks, open: ArrowSquareOut, download: DownloadSimple,
+  edit: PencilSimple,
 };
 
 export function Icon({ name, size = 17, weight = 'bold', ...rest }) {

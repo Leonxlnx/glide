@@ -10,8 +10,9 @@ const { spawn } = require('child_process');
 
 const native = require('./native');
 const { JsonFile, DEFAULT_SETTINGS, SNIPPING_TOOLS, mergeDefaults } = require('./store');
-const { ClipboardHistory, writeImageFile } = require('./clipboard');
+const { ClipboardHistory, writeImageFile, writePng } = require('./clipboard');
 const { Captures } = require('./captures');
+const { Editor } = require('./editor');
 const { Media } = require('./media');
 const { QuickTodo } = require('./quicktodo');
 
@@ -546,6 +547,7 @@ function boot() {
     onChange: () => send('captures', captureList()),
   });
   const captureList = () => ({ items: captures.items.slice(0, 300), sharpshot: captures.available(), source: S().captures.source });
+  const editor = new Editor({ webPreferences: webPrefs, writePng, log });
 
   const media = new Media({ onChange: () => send('media', media.state) });
 
@@ -812,6 +814,14 @@ function boot() {
     ipcMain.handle('clip:full', (e, id) => { const it = clip.get(id); return it ? it.text || null : null; });
 
     ipcMain.on('cap:copy', async (e, id) => { if (await copyCapture(id)) send('toast', { text: 'Copied', icon: 'check' }); });
+    ipcMain.on('cap:edit', (e, id) => {
+      const it = captures.get(id);
+      if (it && it.kind === 'image' && editor.open(it.path, it.name)) close('open', { fast: true });
+    });
+    ipcMain.on('clip:edit', (e, id) => {
+      const it = clip.get(id);
+      if (it && it.type === 'image' && editor.open(it.file, 'Clipboard image')) close('open', { fast: true });
+    });
     ipcMain.on('cap:open', (e, id) => { const it = captures.get(id); if (it) { shell.openPath(it.path); close('open', { fast: true }); } });
     ipcMain.on('cap:reveal', (e, id) => { const it = captures.get(id); if (it) { shell.showItemInFolder(it.path); close('open', { fast: true }); } });
     ipcMain.on('cap:sharpshot', () => {
