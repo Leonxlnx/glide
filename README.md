@@ -52,6 +52,14 @@ Settings → Open with → Hover. In hover mode, resting the cursor at the edge 
 delay, and whether the whole edge or only its middle counts, are adjustable) and dragging a file to
 the edge opens the Shelf. The tray menu can pause hover reveal temporarily.
 
+### Several screens
+
+With more than one screen, Settings → Screen picks where Glide lives. **Auto** (the default) follows
+your cursor to the chosen edge of any screen whose edge is free; picking a screen pins the pill and
+the panel to that screen, even when its edge touches another screen (click works best there).
+Settings → Pause on decides what a full-screen app does: **That screen** hides Glide only on the
+screen showing the game or video, **All screens** hides it everywhere while one is up.
+
 ## Companion apps
 
 Glide works on its own. Two small companion apps plug into it if you have them:
@@ -159,7 +167,8 @@ node scripts/build-helper.js   # writes electron/helper/glide-media.exe
 Everything is under Settings (the sliders icon in the panel, or the tray menu): screen edge, width,
 click or hover to open, hover delay and trigger zone, theme, accent, glass material and tint, which
 sections show and in what order, the tools row, global shortcuts, clipboard retention, the capture
-source, hiding from screen capture, pausing in full screen and launch at login.
+source, hiding from screen capture, pausing in full screen (on that screen or all of them), which
+screen to use and launch at login.
 
 Settings are plain JSON in `%APPDATA%\Glide\settings.json`.
 

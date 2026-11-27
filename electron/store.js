@@ -58,6 +58,8 @@ const DEFAULT_SETTINGS = {
   launchAtLogin: true,
   dragOpens: true,
   pauseInFullscreen: true,
+  fullscreenScope: 'display', // display (only the screen with the fullscreen app) | all (every screen)
+  display: 'auto', // auto (follow the cursor to any free edge) | a display id (pin Glide to that screen)
   clockSeconds: false,
   hour12: false,
   showMedia: true,
