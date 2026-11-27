@@ -11,6 +11,11 @@ function Await($op, [Type]$t) {
 }
 [void][Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime]
 [void][Windows.Storage.Streams.IRandomAccessStreamWithContentType, Windows.Storage.Streams, ContentType = WindowsRuntime]
+# Windows PowerShell hands WinRT streams back as bare COM objects, so calling
+# AsStreamForRead directly finds no overload. Reflection does the interface cast for us.
+$asStreamForRead = [System.IO.WindowsRuntimeStreamExtensions].GetMethods() | Where-Object {
+  $_.Name -eq 'AsStreamForRead' -and $_.GetParameters().Count -eq 1
+} | Select-Object -First 1
 $mgrType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager]
 $propsType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties]
 $streamType = [Windows.Storage.Streams.IRandomAccessStreamWithContentType]
@@ -32,15 +37,18 @@ while ($true) {
       $key = "$($s.SourceAppUserModelId)|$($p.Title)|$($p.Artist)|$($p.AlbumTitle)"
       if ($key -ne $lastKey) {
         $art = $null
+        # Artwork is optional: a failure here must not drop the whole session.
         if ($p.Thumbnail) {
-          $rs = Await ($p.Thumbnail.OpenReadAsync()) $streamType
-          if ($rs) {
-            $ns = [System.IO.WindowsRuntimeStreamExtensions]::AsStreamForRead($rs)
-            $ms = New-Object System.IO.MemoryStream
-            $ns.CopyTo($ms)
-            if ($ms.Length -gt 0 -and $ms.Length -lt 3000000) { $art = [Convert]::ToBase64String($ms.ToArray()) }
-            $ns.Dispose(); $ms.Dispose()
-          }
+          try {
+            $rs = Await ($p.Thumbnail.OpenReadAsync()) $streamType
+            if ($rs) {
+              $ns = $asStreamForRead.Invoke($null, @($rs))
+              $ms = New-Object System.IO.MemoryStream
+              $ns.CopyTo($ms)
+              if ($ms.Length -gt 0 -and $ms.Length -lt 3000000) { $art = [Convert]::ToBase64String($ms.ToArray()) }
+              $ns.Dispose(); $ms.Dispose()
+            }
+          } catch { $art = $null }
         }
       }
       $state = @{
