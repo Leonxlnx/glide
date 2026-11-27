@@ -8,6 +8,7 @@ const { JsonFile } = require('./store');
 const WM_CLIPBOARDUPDATE = 0x031d;
 const MAX_TEXT = 1_000_000;
 const DAY = 86_400_000;
+const IMAGE_FILE = /\.(png|jpe?g|gif|bmp|webp|tiff?)$/i;
 
 function uid() { return crypto.randomBytes(8).toString('hex'); }
 
@@ -109,15 +110,19 @@ class ClipboardHistory {
     const item = { id: uid(), at: Date.now(), source, pinned: false };
 
     const files = this.native.hasFileDrop() ? this.native.readClipboardFiles() : [];
-    if (files.length) {
+    let entries = [];
+    try { entries = await clipboard.read(); } catch { if (!files.length) return; }
+    const types = new Set(entries.flatMap((e) => e.types));
+    // The Snipping Tool, Explorer and browsers put an image and the file it came from on the
+    // clipboard together (the Snipping Tool adds a {GUID}.png temp file a moment after the
+    // bitmap). That copy is an image: keep it as one, so it dedupes and shows its picture.
+    const imageFiles = files.length === 1 && IMAGE_FILE.test(files[0]) && types.has('image/png');
+    if (files.length && !imageFiles) {
       item.type = 'files';
       item.files = files;
       item.sig = 'f:' + files.join('|');
     } else {
-      let entries = [];
-      try { entries = await clipboard.read(); } catch { return; }
-      const types = new Set(entries.flatMap((e) => e.types));
-      const text = types.has('text/plain') ? await clipboard.readText().catch(() => '') : '';
+      const text = !imageFiles && types.has('text/plain') ? await clipboard.readText().catch(() => '') : '';
       if (text && text.trim()) {
         item.text = text.length > MAX_TEXT ? text.slice(0, MAX_TEXT) : text;
         item.type = classifyText(item.text);
