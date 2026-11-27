@@ -53,6 +53,9 @@ const fn = {
   FindWindowW: user32.func('HWND __stdcall FindWindowW(str16 cls, str16 title)'),
   FindWindowExW: user32.func('HWND __stdcall FindWindowExW(HWND parent, HWND after, str16 cls, str16 title)'),
   IsWindowVisible: user32.func('bool __stdcall IsWindowVisible(HWND h)'),
+  IsIconic: user32.func('bool __stdcall IsIconic(HWND h)'),
+  WindowFromPoint: user32.func('HWND __stdcall WindowFromPoint(POINT pt)'),
+  GetAncestor: user32.func('HWND __stdcall GetAncestor(HWND h, uint32_t flags)'),
   AttachThreadInput: user32.func('bool __stdcall AttachThreadInput(uint32_t a, uint32_t b, bool attach)'),
   BringWindowToTop: user32.func('bool __stdcall BringWindowToTop(HWND h)'),
   GetCurrentThreadId: kernel32.func('uint32_t __stdcall GetCurrentThreadId()'),
@@ -262,9 +265,35 @@ function processPath(pid) {
 
 /** True when a fullscreen app / game / presentation owns the screen. */
 function isFullscreenBusy() {
+  const s = notificationState();
+  return s === 2 || s === 3 || s === 4; // BUSY, D3D_FULL_SCREEN, PRESENTATION_MODE
+}
+
+/** Raw SHQueryUserNotificationState value (0 when the call fails). */
+function notificationState() {
   const s = [0];
-  if (fn.SHQueryUserNotificationState(s) !== 0) return false;
-  return s[0] === 2 || s[0] === 3 || s[0] === 4; // BUSY, D3D_FULL_SCREEN, PRESENTATION_MODE
+  if (fn.SHQueryUserNotificationState(s) !== 0) return 0;
+  return s[0];
+}
+
+const DESKTOP_CLASSES = new Set(['Progman', 'WorkerW', 'Shell_TrayWnd', 'Shell_SecondaryTrayWnd']);
+
+/**
+ * True when a fullscreen app fills this screen (rect in physical px). SHQueryUserNotificationState
+ * only reports the primary screen, and only while the app has focus, so this looks at the window on
+ * top in the middle of the screen: fullscreen means it fits the screen exactly. A maximized window
+ * overhangs by its invisible borders, so it never fits; neither does the desktop. Browsers keep the
+ * maximized flag while in F11/video fullscreen, so that flag alone doesn't rule a window out.
+ */
+function fullscreenOn(rect) {
+  const h = fn.WindowFromPoint({ x: Math.round(rect.x + rect.width / 2), y: Math.round(rect.y + rect.height / 2) });
+  const root = h && fn.GetAncestor(h, 2 /* GA_ROOT */);
+  if (!root || fn.IsIconic(root) || windowPid(root) === process.pid) return false;
+  if (DESKTOP_CLASSES.has(windowClass(root))) return false;
+  const r = {};
+  if (!fn.GetWindowRect(root, r)) return false;
+  const near = (a, b) => Math.abs(a - b) <= 2; // DIP→pixel rounding at 125 %, 225 %…
+  return near(r.left, rect.x) && near(r.top, rect.y) && near(r.right, rect.x + rect.width) && near(r.bottom, rect.y + rect.height);
 }
 
 function hasBattery() {
@@ -487,7 +516,7 @@ module.exports = {
   findQuickTodo, flushQuickTodo, quitQuickTodo, windowPid, forceForeground,
   exStyle,
   sendCombo, releaseModifiers, isMouseDown, isLeftDown, hwndOf, excludeFromCapture, makeToolWindow, foregroundWindow, focusWindow,
-  processPathOfWindow, processPath, isFullscreenBusy, hasBattery, fileDescription, windowClass, captureRegion, captureRegionAsync,
+  processPathOfWindow, processPath, isFullscreenBusy, notificationState, fullscreenOn, hasBattery, fileDescription, windowClass, captureRegion, captureRegionAsync,
   listenClipboard, unlistenClipboard, clipboardSequence, clipboardIsSensitive, hasFileDrop,
   readClipboardFiles, writeClipboardFiles, raw: fn,
 };

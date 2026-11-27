@@ -8,7 +8,7 @@ function mock() {
   const settings = {
     edge: 'right', width: 368, hoverDelay: 120, triggerZone: 'full', closeDelay: 320, showHandle: true,
     theme: 'dark', accent: 'blue', glass: 'live', glassTint: 0.5, reduceMotion: false, hideFromCapture: true,
-    launchAtLogin: true, dragOpens: true, pauseInFullscreen: true, clockSeconds: false, hour12: false, showMedia: true,
+    launchAtLogin: true, dragOpens: true, pauseInFullscreen: true, fullscreenScope: 'display', display: 'auto', clockSeconds: false, hour12: false, showMedia: true,
     clipboard: { enabled: true, limit: 300, pasteOnClick: true, skipSensitive: true },
     tabs: [{ id: 'clipboard', on: true }, { id: 'captures', on: true }, { id: 'shelf', on: true }, { id: 'notes', on: true }],
     tools: [
@@ -39,6 +39,10 @@ function mock() {
     invoke: async (ch, arg) => {
       if (ch === 'init') return {
         settings, clip, captures, shelf: [], tab: 'clipboard', todo: { found: true, current: 0, lists: [{ name: 'Main', items: [{ text: 'Ship the sidebar', done: false }, { text: 'Review designs', done: false }, { text: 'Inbox zero', done: true }] }, { name: 'Ideas', items: [{ text: 'Shader animation', done: false }] }] }, hotkeys: { toggle: 'ok', clipboard: 'ok' }, dark: true, version: 'dev', packaged: false,
+        displays: [
+          { id: '1', n: 1, label: 'DELL P2419H', primary: false, outer: false },
+          { id: '2', n: 2, label: 'Built-in display', primary: true, outer: true },
+        ],
         media: { app: 'Spotify', title: 'Midnight City', artist: 'M83', album: 'Hurry Up, We’re Dreaming', playing: true, position: 74, duration: 243, updated: Date.now(), canPrev: true, canNext: true, hasArt: false },
         geo: { edge: 'right', win: { x: 0, y: 0, width: 430, height: window.innerHeight }, panel: { x: 52, y: 10, w: 368, h: window.innerHeight - 20 }, bounds: { x: 0, y: 0, width: 1536, height: 960 } },
       };

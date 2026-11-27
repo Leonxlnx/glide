@@ -96,7 +96,9 @@ function boot() {
   let lastInside = 0;
   let hideTimer = null;
   let prevForeground = 0n;
-  let fullscreenBusy = false;
+  let fullscreenBusy = false; // a fullscreen app is up on at least one screen
+  let fsAll = false; // presentation mode, or fullscreen we couldn't place: every screen counts
+  let fsDisplays = new Set(); // ids of the screens a fullscreen app covers
   let hoverPaused = false;
   let hotkeyStatus = {};
   let handleNear = -1;
@@ -160,6 +162,62 @@ function boot() {
       && (right ? o.bounds.x === d.bounds.x + d.bounds.width : o.bounds.x + o.bounds.width === d.bounds.x)));
   }
 
+  // Settings → Screen: 'auto' follows the cursor to any free outer edge, an id pins Glide to that
+  // screen. A pinned screen that is unplugged falls back to auto until it comes back.
+  function pinnedDisplay() {
+    const id = S().display;
+    if (!id || id === 'auto') return null;
+    return displays.find((d) => String(d.id) === String(id)) || null;
+  }
+  const homeDisplays = () => { const p = pinnedDisplay(); return p ? [p] : edgeDisplays(); };
+
+  // the trigger edge of a pinned screen may touch another screen: its last pixel column still counts
+  function atTriggerEdge(pt, d) {
+    if (!pinnedDisplay()) return outerEdge(pt, d);
+    const b = d.bounds;
+    return S().edge !== 'left' ? pt.x >= b.x + b.width - 1 : pt.x <= b.x;
+  }
+
+  function displayList() {
+    const primary = screen.getPrimaryDisplay().id;
+    const outer = new Set(edgeDisplays().map((d) => d.id));
+    return [...displays]
+      .sort((a, b) => a.bounds.x - b.bounds.x || a.bounds.y - b.bounds.y)
+      .map((d, i) => ({ id: String(d.id), n: i + 1, label: d.label || '', primary: d.id === primary, outer: outer.has(d.id) }));
+  }
+
+  // ─────────────────────────── fullscreen ───────────────────────────
+  // Each screen is checked on its own (native.fullscreenOn), so a game on one screen can leave
+  // Glide alone on the other. Windows' own signal still counts: presentation mode pauses every
+  // screen, and a fullscreen app it reports that no screen check found is put on the primary
+  // screen, the only one that signal covers.
+  function scanFullscreen() {
+    const st = native.notificationState(); // 2 BUSY, 3 D3D_FULL_SCREEN, 4 PRESENTATION_MODE
+    fsDisplays = new Set(displays.filter((d) => native.fullscreenOn(screen.dipToScreenRect(null, d.bounds))).map((d) => d.id));
+    if ((st === 2 || st === 3) && !fsDisplays.size) fsDisplays.add(screen.getPrimaryDisplay().id);
+    fsAll = st === 4;
+  }
+
+  /** Whether "Pause in fullscreen apps" keeps Glide off this screen right now. */
+  function pausedOn(id) {
+    if (!S().pauseInFullscreen) return false;
+    if (fsAll) return true;
+    return S().fullscreenScope === 'all' ? fsDisplays.size > 0 : fsDisplays.has(id);
+  }
+
+  let fsKey = '';
+  function applyFullscreen(force = false) {
+    scanFullscreen();
+    const key = fsAll ? 'all' : [...fsDisplays].sort().join(',');
+    if (!force && key === fsKey) return;
+    fsKey = key;
+    fullscreenBusy = fsAll || fsDisplays.size > 0;
+    updateHandle();
+    // Step out of the way of fullscreen games/videos entirely; come back (and repaint) after.
+    if (sidebarShouldHide()) win.hide();
+    else if (state === 'closed' && !win.isVisible()) showSidebarWindow();
+  }
+
   // ─────────────────────────── windows ───────────────────────────
   const baseWindow = {
     show: false, frame: false, transparent: true, resizable: false, movable: false, minimizable: false,
@@ -211,7 +269,7 @@ function boot() {
     setTimeout(() => nudge(win), 600);
   }
 
-  const sidebarShouldHide = () => S().pauseInFullscreen && fullscreenBusy && state === 'closed';
+  const sidebarShouldHide = () => state === 'closed' && pausedOn(geo ? geo.displayId : screen.getPrimaryDisplay().id);
 
   function createHandle() {
     handle = new BrowserWindow({ ...baseWindow, x: 0, y: 0, width: HANDLE_W, height: 200, focusable: false, webPreferences: webPrefs, title: 'Glide Handle' });
@@ -228,12 +286,12 @@ function boot() {
   function updateHandle(displayHint) {
     if (!handle || handle.isDestroyed()) return;
     // in click mode the pill is the way in, so it can't be switched off
-    const show = (S().showHandle || clickMode()) && !(S().pauseInFullscreen && fullscreenBusy) && !hoverPaused;
-    if (!show) { setHandleHot(false); if (handle.isVisible()) handle.hide(); return; }
-    const candidates = edgeDisplays();
+    const show = (S().showHandle || clickMode()) && !hoverPaused;
+    // the pill only sits on screens it may use: the pinned one, or any free edge in auto
+    const candidates = show ? homeDisplays().filter((x) => !pausedOn(x.id)) : [];
     let d = displayHint && candidates.find((x) => x.id === displayHint.id);
     if (!d) d = candidates.find((x) => x.id === handleDisplayId) || candidates.find((x) => x.id === screen.getPrimaryDisplay().id) || candidates[0];
-    if (!d) return;
+    if (!d) { setHandleHot(false); if (handle.isVisible()) handle.hide(); return; }
     const right = S().edge !== 'left';
     const b = d.bounds;
     const bounds = { x: right ? b.x + b.width - HANDLE_W : b.x, y: b.y, width: HANDLE_W, height: b.height };
@@ -346,7 +404,7 @@ function boot() {
       if (why === 'clipboard') { send('panel', { open: true, reason: why, tab: 'clipboard', focusSearch: true }); focusPanel(); }
       return;
     }
-    display = display || screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+    display = display || pinnedDisplay() || screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
     placeOn(display);
     state = 'open';
     reason = why;
@@ -442,8 +500,9 @@ function boot() {
     const now = Date.now();
     const pt = screen.getCursorScreenPoint();
     if (state === 'closed') {
-      const blocked = hoverPaused || (S().pauseInFullscreen && fullscreenBusy);
       const d = screen.getDisplayNearestPoint(pt);
+      const pin = pinnedDisplay();
+      const blocked = hoverPaused || pausedOn(d.id) || (pin && pin.id !== d.id);
       if (blocked) { dwellStart = 0; nearEdge = false; setHandleHot(false); return; }
       const right = S().edge !== 'left';
       const b = d.bounds;
@@ -456,7 +515,7 @@ function boot() {
       const onPill = click && onHandleDisplay && dist < HIT_W && Math.abs(dy) < HIT_H / 2;
       // Handle proximity (fluid hint before reveal)
       if (handle && handle.isVisible()) {
-        if (handleDisplayId !== d.id && edgeDisplays().some((x) => x.id === d.id)) updateHandle(d);
+        if (handleDisplayId !== d.id && homeDisplays().some((x) => x.id === d.id)) updateHandle(d);
         const reach = click ? Math.hypot(dist, Math.max(0, Math.abs(dy) - PILL_REACH)) : dist;
         const near = onHandleDisplay ? Math.max(0, Math.min(1, 1 - reach / 90)) : 0;
         const q = Math.round(near * 20) / 20;
@@ -492,7 +551,7 @@ function boot() {
         } else dwellStart = 0;
         return;
       }
-      const atEdge = outerEdge(pt, d);
+      const atEdge = atTriggerEdge(pt, d);
       const zoneOk = S().triggerZone !== 'middle' || (pt.y > b.y + b.height * 0.22 && pt.y < b.y + b.height * 0.78);
       if (rearmBlocked) { if (!atEdge) rearmBlocked = false; return; }
       if (atEdge && zoneOk) {
@@ -753,8 +812,12 @@ function boot() {
       backdrop.at = 0;
       if (state === 'open') captureBackdrop(d);
     }
+    if (changed('edge')) broadcast('displays', displayList());
+    // an open panel stays where it is; the next one opens on the chosen screen
+    if (changed('display')) { if (state === 'closed') placeOn(pinnedDisplay() || screen.getPrimaryDisplay()); handleDisplayId = null; }
     if (changed('openOn')) { setHandleHot(false); dwellStart = 0; }
-    if (changed('showHandle') || changed('pauseInFullscreen') || changed('openOn')) updateHandle();
+    if (changed('showHandle') || changed('openOn') || changed('display')) updateHandle();
+    if (changed('pauseInFullscreen') || changed('fullscreenScope') || changed('display')) applyFullscreen(true);
     if (changed('hotkeys')) registerHotkeys();
     if (changed('launchAtLogin')) applyLogin();
     if (changed('hideFromCapture')) applyCaptureExclusion();
@@ -771,7 +834,7 @@ function boot() {
   function wireIpc() {
     ipcMain.handle('init', () => ({
       settings: S(), geo, clip: clip.summary(), captures: captureList(), shelf: shelfList(),
-      todo: todos.state, tab: data.data.tab, media: media.state, hotkeys: hotkeyStatus,
+      todo: todos.state, tab: data.data.tab, media: media.state, hotkeys: hotkeyStatus, displays: displayList(),
       dark: nativeTheme.shouldUseDarkColors, version: app.getVersion(), packaged: app.isPackaged,
       backdropSeq: backdrop.buf ? backdrop.seq : 0,
       hasBattery: native.hasBattery(),
@@ -789,7 +852,7 @@ function boot() {
     ipcMain.on('handle:click', () => {
       if (state !== 'closed' || !clickMode()) return;
       const pt = screen.getCursorScreenPoint();
-      open('click', screen.getDisplayNearestPoint(pt), pt.y);
+      open('click', pinnedDisplay() || screen.getDisplayNearestPoint(pt), pt.y);
     });
     ipcMain.on('panel:rect', (e, r) => { if (r && r.w > 0 && r.h > 0) panelRect = r; });
     ipcMain.on('panel:pin', (e, v) => { pinned = !!v; });
@@ -935,22 +998,17 @@ function boot() {
     for (const ev of ['display-added', 'display-removed', 'display-metrics-changed']) {
       screen.on(ev, () => {
         refreshDisplays();
-        const d = displays.find((x) => geo && x.id === geo.displayId) || screen.getPrimaryDisplay();
+        const d = (state === 'closed' && pinnedDisplay()) || displays.find((x) => geo && x.id === geo.displayId) || screen.getPrimaryDisplay();
         placeOn(d);
         handleDisplayId = null;
         updateHandle();
+        applyFullscreen(true);
+        broadcast('displays', displayList());
       });
     }
+    if (pinnedDisplay()) placeOn(pinnedDisplay());
     loop();
-    setInterval(() => {
-      const busy = native.isFullscreenBusy();
-      if (busy === fullscreenBusy) return;
-      fullscreenBusy = busy;
-      updateHandle();
-      // Step out of the way of fullscreen games/videos entirely; come back (and repaint) after.
-      if (sidebarShouldHide()) win.hide();
-      else if (state === 'closed' && !win.isVisible()) showSidebarWindow();
-    }, 1500);
+    setInterval(() => applyFullscreen(), 1500);
     log('Glide started', app.getVersion(), process.argv.slice(1).join(' '));
     if (process.argv.includes('--open') || (!data.data.onboarded && app.isPackaged)) setTimeout(() => open('tray'), 1600);
     if (!app.isPackaged && process.env.GLIDE_DEV === '1') devChannel();
@@ -1082,7 +1140,7 @@ function boot() {
           } else if (c.cmd === 'state') {
             const pt = screen.getCursorScreenPoint();
             results.push({ pt, inside: insidePanel(pt), sinceInside: Date.now() - lastInside, mouseDown: native.isMouseDown(), dragOut, dialogOpen });
-            results.push({ state, reason, pinned, typing, focused, dragIn, geo, visible: win.isVisible(), handleVisible: handle.isVisible(), backdropSeq: backdrop.seq, fullscreenBusy, hotkeyStatus });
+            results.push({ state, reason, pinned, typing, focused, dragIn, geo, visible: win.isVisible(), handleVisible: handle.isVisible(), backdropSeq: backdrop.seq, fullscreenBusy, fsAll, fsDisplays: [...fsDisplays], handleDisplayId, pinnedDisplay: pinnedDisplay() && pinnedDisplay().id, displays: displayList(), hotkeyStatus });
           }
         } catch (e) { results.push({ error: String(e && e.stack || e) }); }
       }

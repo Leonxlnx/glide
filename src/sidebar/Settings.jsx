@@ -9,10 +9,14 @@ import { Icon, ToolIcon, TOOL_ICONS } from './icons';
 export default memo(function Settings() {
   const s = useStore(app, (x) => x.settings);
   const hotkeys = useStore(app, (x) => x.hotkeys);
+  const displays = useStore(app, (x) => x.displays) || [];
   const version = useStore(app, (x) => x.version);
   const packaged = useStore(app, (x) => x.packaged);
   const set = (patch) => updateSettings(patch);
   const hover = s.openOn === 'hover';
+  const multi = displays.length > 1;
+  const pinned = displays.find((d) => d.id === String(s.display));
+  const edgeName = s.edge === 'left' ? 'left' : 'right';
   const [confirmClear, setConfirmClear] = useState(false);
 
   return (
@@ -31,6 +35,18 @@ export default memo(function Settings() {
           <Row label="Screen edge">
             <Segmented small value={s.edge} onChange={(v) => set({ edge: v })} options={[{ id: 'left', label: 'Left' }, { id: 'right', label: 'Right' }]} />
           </Row>
+          {multi && (
+            <Row col label="Screen">
+              <Segmented
+                small value={pinned ? pinned.id : 'auto'} onChange={(v) => set({ display: v })}
+                options={[{ id: 'auto', label: 'Auto' }, ...displays.map((d) => ({ id: d.id, label: displays.length > 3 ? String(d.n) : `Screen ${d.n}` }))]}
+              />
+              <div className="row-sub">
+                {!pinned ? `Follows your cursor to the ${edgeName} edge of any screen`
+                  : `${pinned.label || `Screen ${pinned.n}`}${pinned.primary ? ' · main screen' : ''}${hover && !pinned.outer ? `. Its ${edgeName} edge touches another screen, so Click is easier to hit` : ''}`}
+              </div>
+            </Row>
+          )}
           <Row col label="Width" value={`${s.width} pt`}>
             <Slider value={s.width} min={280} max={420} step={4} onCommit={(v) => set({ width: v })} />
           </Row>
@@ -50,6 +66,11 @@ export default memo(function Settings() {
           )}
           <Row label="Open while dragging files" sub={hover ? 'Drag to the edge to drop on the Shelf' : 'Drag onto the pill to drop on the Shelf'}><Switch on={s.dragOpens} onChange={(v) => set({ dragOpens: v })} /></Row>
           <Row label="Pause in fullscreen apps" sub="Games, videos and presentations"><Switch on={s.pauseInFullscreen} onChange={(v) => set({ pauseInFullscreen: v })} /></Row>
+          {multi && s.pauseInFullscreen && (
+            <Row label="Pause on" sub={s.fullscreenScope === 'all' ? 'A fullscreen app hides Glide on every screen' : 'Only the screen with the fullscreen app'}>
+              <Segmented small value={s.fullscreenScope === 'all' ? 'all' : 'display'} onChange={(v) => set({ fullscreenScope: v })} options={[{ id: 'display', label: 'That screen' }, { id: 'all', label: 'All screens' }]} />
+            </Row>
+          )}
         </Group>
 
         <Label>Appearance</Label>

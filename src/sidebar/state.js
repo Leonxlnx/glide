@@ -28,6 +28,7 @@ export const app = createStore({
   todo: { found: false, lists: [], current: 0 },
   media: null,
   hotkeys: {},
+  displays: [],
   dark: true,
   backdrop: { seq: 0, lum: 0.3 },
   toast: null,
@@ -72,6 +73,7 @@ export async function boot() {
     todo: init.todo || app.get().todo,
     media: init.media,
     hotkeys: init.hotkeys || {},
+    displays: init.displays || [],
     dark: init.dark,
     tab: enabledTabs.includes(init.tab) ? init.tab : enabledTabs[0] || 'clipboard',
     version: init.version,
@@ -103,6 +105,7 @@ export async function boot() {
   glide.on('todo', (todo) => app.set({ todo }));
   glide.on('media', (media) => app.set({ media }));
   glide.on('hotkeys', (hotkeys) => app.set({ hotkeys }));
+  glide.on('displays', (displays) => app.set({ displays }));
   glide.on('theme', (dark) => app.set({ dark }));
   glide.on('backdrop', (b) => app.set({ backdrop: b }));
   glide.on('toast', (t) => toast(t.text, t.icon));
