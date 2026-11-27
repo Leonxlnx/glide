@@ -11,6 +11,11 @@ const DAY = 86_400_000;
 
 function uid() { return crypto.randomBytes(8).toString('hex'); }
 
+/** Put PNG bytes on the clipboard as an image. */
+async function writePng(buf) {
+  await clipboard.write([new ClipboardItem({ 'image/png': new Blob([buf], { type: 'image/png' }) })]);
+}
+
 /** Write a PNG (or any image file) to the clipboard as an image. */
 async function writeImageFile(file) {
   let buf = fs.readFileSync(file);
@@ -19,7 +24,7 @@ async function writeImageFile(file) {
     if (img.isEmpty()) throw new Error('unreadable image');
     buf = img.toPNG();
   }
-  await clipboard.write([new ClipboardItem({ 'image/png': new Blob([buf], { type: 'image/png' }) })]);
+  await writePng(buf);
 }
 
 function classifyText(t) {
@@ -280,4 +285,4 @@ class ClipboardHistory {
   }
 }
 
-module.exports = { ClipboardHistory, classifyText, writeImageFile };
+module.exports = { ClipboardHistory, classifyText, writeImageFile, writePng };

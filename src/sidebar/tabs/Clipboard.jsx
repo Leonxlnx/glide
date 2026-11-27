@@ -180,6 +180,7 @@ function Item({ it, idx, sel, onAct }) {
       <div className="acts" onClick={(e) => e.stopPropagation()}>
         <button className="act" title="Copy" onClick={() => glide.send('clip:copy', it.id)}><Icon name="copy" size={14} /></button>
         {it.type === 'link' && <button className="act" title="Open link" onClick={() => glide.send('open:url', it.text.trim())}><Icon name="external" size={14} /></button>}
+        {it.type === 'image' && <button className="act" title="Mark up" onClick={() => glide.send('clip:edit', it.id)}><Icon name="edit" size={14} /></button>}
         {it.type === 'image' && <button className="act" title="Save to Downloads" onClick={() => glide.send('clip:save', it.id)}><Icon name="download" size={14} /></button>}
         <button className={'act' + (it.pinned ? ' on' : '')} title={it.pinned ? 'Unpin' : 'Pin'} onClick={() => glide.send('clip:pin', it.id)}><Icon name={it.pinned ? 'unpin' : 'pin'} size={14} /></button>
         <button className="act danger" title="Delete" onClick={() => glide.send('clip:remove', it.id)}><Icon name="trash" size={14} /></button>

@@ -77,11 +77,11 @@ function Cap({ it, i }) {
       transition={{ type: 'spring', stiffness: 380, damping: 26, delay: Math.min(i, 8) * 0.02 }}
       onPointerEnter={() => { if (it.kind === 'video') t.current = setTimeout(() => setPreview(true), 350); }}
       onPointerLeave={() => { clearTimeout(t.current); setPreview(false); }}
-      onClick={() => { clearTimeout(clickT.current); clickT.current = setTimeout(() => glide.send('cap:copy', it.id), 220); }}
+      onClick={() => { clearTimeout(clickT.current); clickT.current = setTimeout(() => glide.send(it.kind === 'image' ? 'cap:edit' : 'cap:copy', it.id), 220); }}
       onDoubleClick={() => { clearTimeout(clickT.current); glide.send('cap:open', it.id); }}
       draggable
       onDragStart={(e) => { e.preventDefault(); clearTimeout(clickT.current); glide.send('drag:start', { kind: 'capture', id: it.id }); }}
-      title={`${it.name}\n${ago(it.at)} · click to copy · double-click to open · drag into any app`}
+      title={`${it.name}\n${ago(it.at)} · ${it.kind === 'image' ? 'click to mark up' : 'click to copy'} · double-click to open · drag into any app`}
     >
       {!loaded && !failed && !isMock && <div className="cap-skel" />}
       {src && !failed && <img src={src} alt="" loading="lazy" decoding="async" style={{ opacity: loaded ? 1 : 0, transition: 'opacity .35s' }} onLoad={() => setLoaded(true)} onError={() => setFailed(true)} />}
